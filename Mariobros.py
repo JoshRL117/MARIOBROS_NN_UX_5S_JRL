@@ -13,7 +13,7 @@ import pandas as pd
 class mnit_neural_network(nn.Module):
     def __init__(self, n_input, n_output, W) -> None:
         super(mnit_neural_network, self).__init__()
-        self.weights = torch.tensor(W).reshape(1480, 10)
+        self.weights = torch.tensor(W).reshape(1280, 10)
         self.input_layer = nn.Linear(n_input, 10)
         self.weights_inputlayer = self.weights[:, :200]
         self.weights_outputlayer = self.weights[:, 200:]
@@ -22,9 +22,10 @@ class mnit_neural_network(nn.Module):
         self.softmax = nn.Softmax(dim=1)
         self.sigmoide = nn.Sigmoid()
     def forward(self, x):
-        out = self.sigmoide(self.input_layer(x))
-        out = self.softmax(self.output_layer(out))
-        return out  
+        out = self.relu(self.input_layer(x))
+        out = self.sigmoide(self.output_layer(out)) 
+        #out = 11 * out 
+        return out 
 def funcion_U(V, gen_actual, CR):
     U = gen_actual.copy()
     for i in range(len(V)):
@@ -66,9 +67,9 @@ def evaluar_cerebro(W, n_input, n_output):
     return recompensa
 
 env = gym.make('SuperMarioBros-v0', apply_api_compatibility=True, render_mode="human")
-env = JoypadSpace(env,COMPLEX_MOVEMENT)
+env = JoypadSpace(env,SIMPLE_MOVEMENT)
 n_input = 50
-n_output = len(COMPLEX_MOVEMENT)
+n_output = len(SIMPLE_MOVEMENT)
 CR = 0.8
 F = 0.9
 NP = 10
