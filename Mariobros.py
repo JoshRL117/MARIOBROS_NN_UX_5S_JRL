@@ -14,17 +14,15 @@ class mnit_neural_network(nn.Module):
     def __init__(self, n_input, n_output, W) -> None:
         super(mnit_neural_network, self).__init__()
         self.weights = torch.tensor(W).reshape(1280, 10)
-        self.input_layer = nn.Linear(n_input, 10)
-        self.weights_inputlayer = self.weights[:, :200]
-        self.weights_outputlayer = self.weights[:, 200:]
-        self.output_layer = nn.Linear(10, n_output)
+        self.input_layer = nn.Linear(n_input, 5000)
+        self.output_layer = nn.Linear(5000, n_output)
         self.relu = nn.ReLU()
         self.softmax = nn.Softmax(dim=1)
         self.sigmoide = nn.Sigmoid()
     def forward(self, x):
-        out = self.relu(self.input_layer(x))
+        out = self.softmax(self.input_layer(x))
         out = self.sigmoide(self.output_layer(out)) 
-        #out = 11 * out 
+        out = 6 * out 
         return out 
 def funcion_U(V, gen_actual, CR):
     U = gen_actual.copy()
@@ -54,10 +52,12 @@ def evaluar_cerebro(W, n_input, n_output):
         obstensor = torch.from_numpy(obs_gris)  # Convertir a tensor
         obstensor = obstensor.float()
         accion = cerebro.forward(obstensor).argmax().item()
-        print(accion)
+        if accion>7:
+            obs, reward, terminated, truncated, info = env.step(6)
+        else:
+            obs, reward, terminated, truncated, info = env.step(accion)
         #accion = min(max(0, accion), 11)
         #print(accion)
-        obs, reward, terminated, truncated, info = env.step(accion)
         recompensa += reward
         done = terminated or truncated
 
@@ -100,7 +100,7 @@ Poblacion = pd.DataFrame(np.random.uniform(-2, 2, size=(Num_of_gen, len(columna)
 Best_gen = Poblacion.copy()
 gen = 0
 
-while gen < 2:
+while gen < 10:
     recompensa = []
     for i in range(0, Num_of_gen):
         index = getindex(i, Num_of_gen)
