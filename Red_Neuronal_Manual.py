@@ -10,36 +10,27 @@ import numpy as np
 import pandas as pd
 
 class MariobrosNN:
-    def __init__(self, entrada, salida):
+    def __init__(self, entrada, salida,W):
         self.capaentrada = entrada
         self.capasalida = salida
+        self.pesos=W
         self.relu = nn.ReLU()
         self.softmax = nn.Softmax(dim=1)
         self.sigmoide=nn.Sigmoid()
 
-    def forward(self, input, W):
+    def forward(self, input):
         # Entrada
+        Pesos_entrada=self.pesos[:15625]
         bias1 = np.zeros((1, 25))
-        output_capaentrada = np.dot(input, W[0]) + bias1
-        # Convert the output_capaentrada to a PyTorch tensor before applying ReLU
+        output_capaentrada = np.dot(input, Pesos_entrada.reshape(625,25)) + bias1
         output_capaentrada_act = self.relu(torch.tensor(output_capaentrada))
 
         # Salida
+        Pesos_salida=self.pesos[15625:]
         bias2 = np.zeros((1, 7))
-        output_capasalida = np.dot(output_capaentrada_act, W[1]) + bias2
+        output_capasalida = np.dot(output_capaentrada_act, Pesos_salida.reshape(25,7)) + bias2
         output_capasalida_act = self.softmax(torch.tensor(output_capasalida))
         return output_capasalida_act
-
-def pesosporcapas(U):
-    parte1 = U[:15625]
-    parte2 = U[15625:]
-
-    arreglo_pesos = [
-        parte1.reshape(625, 25),
-        parte2.reshape(25, 7)
-    ]
-
-    return arreglo_pesos
 
 def FVMARIO(indexarr,pob,f):
     r0=np.array(pob[indexarr[0]])
@@ -68,17 +59,16 @@ def convertir_a_gris(obs):
     return np.array(img_redimensionada)
 
 def evaluar_cerebro(W, n_input, n_output):
-    cerebro = MariobrosNN(n_input, n_output)
+    cerebro = MariobrosNN(n_input, n_output,W)
     recompensa = 0
     env.reset()
     action = env.action_space.sample()
     obs, reward, terminated, truncated, info = env.step(action)
-    pesos = pesosporcapas(W)  # Aquí separo mis pesos por capas
     for step in range(5000):
         obs_gris = convertir_a_gris(obs)
         obs_gristensor = torch.tensor(np.array(obs_gris).flatten().tolist())
-        accion = cerebro.forward(obs_gristensor, pesos).argmax().item()
-        print(accion)
+        accion = cerebro.forward(obs_gristensor).argmax().item()
+        #print(accion)
         obs, reward, terminated, truncated, info = env.step(accion)
         recompensa += reward
         done = terminated or truncated
@@ -111,19 +101,22 @@ index = [2, 7, 5]
 v = (FVMARIO(index, Poblacion, F))
 print(v)
 u = (funcion_U(v, Poblacion[1], CR))
-print(pesosporcapas(u))
 mayorrecompensa=-1000
-def mejor(mayor,arreglo):
+def mejor(mayor,arreglo,mejorcerebro,pesosmejores,pesos):
+    bestindex=mejorcerebro
+    pesosideales=pesosmejores
     for i in range(len(arreglo)):
         if arreglo[i]>mayor:
             bestindex=i
             mayor=arreglo[i]
-    return bestindex,mayor
+            pesosideales=pesos[bestindex]
+
+    return bestindex,mayor,pesosideales
             
-# Example usage
 Best_gen = Poblacion.copy()
-evaluar_cerebro(u, n_input, n_output)
-while gen<3:
+mejorcerebro=0
+pesosideales=Best_gen[0]
+while gen<10:
     Best_gen=Best_gen.copy()
     recompensa=[]
     for i in range(0,Num_of_gen):
@@ -132,14 +125,19 @@ while gen<3:
         u = (funcion_U(v, Best_gen[i], CR))
         r=evaluar_cerebro(u, n_input, n_output)
         recompensa.append(r)
-        print("Recompensa = {}".format(r))
-        print("Cerebro {} terminado".format(i))
         Best_gen[i]=u
     print("Fin de generacion {}".format(gen))
-    mejorcerebro,mayorrecompensa=mejor(mayorrecompensa,recompensa)
-    pesosideales=Best_gen[mejorcerebro]
+    print("Todas las recompensas = {}".format(recompensa))
+    mejorcerebro,mayorrecompensa,pesosideales=mejor(mayorrecompensa,recompensa,mejorcerebro,pesosideales,Best_gen)
+    print("Mayor recompensa = {}".format(mayorrecompensa))
+    print(pesosideales)
     gen+=1
+with open('pesosideales.txt', 'w') as file:
+    for peso in pesosideales:
+        file.write(str(peso) + '\n')
 
+with open('mayorrecompensa.txt', 'w') as file:
+    file.write(str(mayorrecompensa) + '\n')
 '''
 
 while gen < 10:
