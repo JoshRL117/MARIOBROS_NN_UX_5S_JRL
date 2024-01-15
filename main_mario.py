@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 class MariobrosNN:
-    def __init__(self, entrada, salida,W):
+    def __init__(self, entrada, salida,W:np.array):
         self.capaentrada = entrada
         self.capasalida = salida
         self.pesos=W
@@ -20,15 +20,19 @@ class MariobrosNN:
 
     def forward(self, input):
         # Entrada
-        Pesos_entrada=self.pesos[:15625]
-        bias1 = np.zeros((1, 25))
-        output_capaentrada = np.dot(input, Pesos_entrada.reshape(625,25)) + bias1
+        Pesos_entrada=self.pesos[:250000]
+        bias1 = np.zeros((1, 100))
+        output_capaentrada = np.dot(input, Pesos_entrada.reshape(2500, 100)) + bias1
         output_capaentrada_act = self.relu(torch.tensor(output_capaentrada))
-
+        #Capa_oculta
+        Pesos_capaoculta_1=self.pesos[250000:258000]
+        bias2=np.zeros((1,80))
+        output_capaoculta=np.dot(output_capaentrada_act,Pesos_capaoculta_1.reshape(100,80))+bias2
+        activacion_oculta=self.softmax(torch.tensor(output_capaoculta))
         # Salida
-        Pesos_salida=self.pesos[15625:]
-        bias2 = np.zeros((1, 7))
-        output_capasalida = np.dot(output_capaentrada_act, Pesos_salida.reshape(25,7)) + bias2
+        Pesos_salida=self.pesos[258000:]
+        bias3 = np.zeros((1, 12))
+        output_capasalida = np.dot(activacion_oculta, Pesos_salida.reshape(80,12)) + bias3
         output_capasalida_act = self.softmax(torch.tensor(output_capasalida))
         return output_capasalida_act
 
@@ -55,7 +59,7 @@ def getindex(index_actual, size):
 
 def convertir_a_gris(obs):
     img = Image.fromarray(obs, 'RGB').convert('L')
-    img_redimensionada = img.resize((25, 25))
+    img_redimensionada = img.resize((50, 50))
     return np.array(img_redimensionada)
 
 def evaluar_cerebro(W, n_input, n_output):
@@ -77,43 +81,19 @@ def evaluar_cerebro(W, n_input, n_output):
             env.reset()
 
     return recompensa
-
 env = gym.make('SuperMarioBros-v0', apply_api_compatibility=True, render_mode="human")
-env = JoypadSpace(env,SIMPLE_MOVEMENT)
-n_input = 25 * 25
-n_output = 7
+env = JoypadSpace(env, COMPLEX_MOVEMENT)
+n_input = 50 * 50
+n_output = 12
 CR = 0.8
 F = 0.9
 NP = 10
 Num_of_gen = 10
-print(SIMPLE_MOVEMENT)
-tamaño_arreglo = 15800
-
-# Aqui creamos la poblacion
-Poblacion = []
-for i in range(0, 10):
-    arreglo = np.random.uniform(-2, 2, tamaño_arreglo)
-    Poblacion.append(arreglo)
-
-gen = 0
-
-index = [2, 7, 5]
-v = (FVMARIO(index, Poblacion, F))
-print(v)
-u = (funcion_U(v, Poblacion[1], CR))
-mayorrecompensa=-1000
-def mejor(mayor,arreglo,mejorcerebro,pesosmejores,pesos):
-    bestindex=mejorcerebro
-    pesosideales=pesosmejores
-    for i in range(len(arreglo)):
-        if arreglo[i]>mayor:
-            bestindex=i
-            mayor=arreglo[i]
-            pesosideales=pesos[bestindex]
+print(COMPLEX_MOVEMENT)
+tamaño_arreglo = 258960#El numero de pesos que tendra la red neuronal
 
 with open('pesosideales.txt', 'r') as file:
     pesos_leidos = [float(line.strip()) for line in file]
 
-print(pesos_leidos)
-
-print(evaluar_cerebro(n_input,n_output,list(pesos_leidos)))
+pesos_leidos=(np.array(pesos_leidos))
+print(evaluar_cerebro(pesos_leidos,n_input,n_output))

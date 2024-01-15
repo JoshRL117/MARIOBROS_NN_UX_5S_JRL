@@ -29,7 +29,7 @@ class MariobrosNN:
         Pesos_capaoculta_1=self.pesos[250000:258000]
         bias2=np.zeros((1,80))
         output_capaoculta=np.dot(output_capaentrada_act,Pesos_capaoculta_1.reshape(100,80))+bias2
-        activacion_oculta=self.relu(torch.tensor(output_capaoculta))
+        activacion_oculta=self.softmax(torch.tensor(output_capaoculta))
         # Salida
         Pesos_salida=self.pesos[258000:]
         bias3 = np.zeros((1, 12))
@@ -39,9 +39,9 @@ class MariobrosNN:
 
 #Funciones
 def FVMARIO(indexarr,pob,f):
-    r0=(Poblacion[indexarr[0]])
-    r1=(Poblacion[indexarr[1]])
-    r2=(Poblacion[indexarr[2]])
+    r0=(pob[indexarr[0]])
+    r1=(pob[indexarr[1]])
+    r2=(pob[indexarr[2]])
     return r0 + f * (r1 - r2)
 def funcion_U(V, gen_actual, CR):
     U = gen_actual.copy()
@@ -93,6 +93,14 @@ def mejor(mayor,arreglo,mejorcerebro,pesosmejores,pesos):
             pesosideales=pesos[bestindex]
 
     return bestindex,mayor,pesosideales
+
+def mejorescerebros(recompensaactual,recompensa2,bestgen,cerebros2):
+    for i in range(0,10):
+        if recompensaactual[i]<recompensa2[i]:
+            bestgen[i]=cerebros2[i]
+            recompensaactual[i]=recompensa2[i]
+    return bestgen,recompensaactual
+
 #Creacion de la red neuronal
 env = gym.make('SuperMarioBros-v0', apply_api_compatibility=True, render_mode="human")
 env = JoypadSpace(env, COMPLEX_MOVEMENT)
@@ -115,19 +123,23 @@ mayorrecompensa=-1000
 Best_gen = Poblacion.copy()
 mejorcerebro=0
 pesosideales=Best_gen[0]
+mejoresrecompensas=[0,0,0,0,0,0,0,0,0,0]
 gen=0
-while gen<10:
+while gen<=10:
     Best_gen=Best_gen.copy()
     recompensa=[]
+    pesos_actuales=[]
     for i in range(0,Num_of_gen):
         index=getindex(i,Num_of_gen)
         v = (FVMARIO(index, Best_gen, F))
         u = (funcion_U(v, Best_gen[i], CR))
         r=evaluar_cerebro(u, n_input, n_output)
         recompensa.append(r)
-        Best_gen[i]=u
+        pesos_actuales.append(u)
     print("Fin de generacion {}".format(gen))
     print("Todas las recompensas = {}".format(recompensa))
+    Best_gen,mejoresrecompensas=mejorescerebros(mejoresrecompensas,recompensa,Best_gen,pesos_actuales)
+    print("Estas son las mejores recompensas= {}".format(mejoresrecompensas))
     mejorcerebro,mayorrecompensa,pesosideales=mejor(mayorrecompensa,recompensa,mejorcerebro,pesosideales,Best_gen)
     print("Mayor recompensa = {}".format(mayorrecompensa))
     print(pesosideales)

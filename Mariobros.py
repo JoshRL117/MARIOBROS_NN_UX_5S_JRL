@@ -1,4 +1,3 @@
-#No deja de trabarse el visual maldita sea:(
 import torch
 import torch.nn as nn
 from nes_py.wrappers import JoypadSpace
@@ -10,20 +9,40 @@ from PIL import Image
 import numpy as np
 import pandas as pd
 
-class mnit_neural_network(nn.Module):
-    def __init__(self, n_input, n_output, W) -> None:
-        super(mnit_neural_network, self).__init__()
-        self.weights = torch.tensor(W).reshape(1280, 10)
-        self.input_layer = nn.Linear(n_input, 5000)
-        self.output_layer = nn.Linear(5000, n_output)
+#Estrctura de la red neuoronal
+class MariobrosNN:
+    def __init__(self, entrada, salida,W):
+        self.capaentrada = entrada
+        self.capasalida = salida
+        self.pesos=W
         self.relu = nn.ReLU()
         self.softmax = nn.Softmax(dim=1)
-        self.sigmoide = nn.Sigmoid()
-    def forward(self, x):
-        out = self.softmax(self.input_layer(x))
-        out = self.sigmoide(self.output_layer(out)) 
-        out = 6 * out 
-        return out 
+        self.sigmoide=nn.Sigmoid()
+
+    def forward(self, input):
+        # Entrada
+        Pesos_entrada=self.pesos[:125000000]
+        bias1 = np.zeros((1, 500))
+        output_capaentrada = np.dot(input, Pesos_entrada.reshape(2500, 500)) + bias1
+        output_capaentrada_act = self.relu(torch.tensor(output_capaentrada))
+        #Capa_oculta
+        Pesos_capaoculta_1=self.pesos[125000000:125150000]
+        bias2=np.zeros((1,100))
+        output_capaoculta=np.dot(output_capaentrada_act,Pesos_capaoculta_1.reshape(500,100))+bias2
+        activacion_oculta=self.relu(torch.tensor(output_capaoculta))
+        # Salida
+        Pesos_salida=self.pesos[125150000:]
+        bias3 = np.zeros((1, 12))
+        output_capasalida = np.dot(activacion_oculta, Pesos_salida.reshape(100,12)) + bias3
+        output_capasalida_act = self.softmax(torch.tensor(output_capasalida))
+        return output_capasalida_act
+
+#Funciones
+def FVMARIO(indexarr,pob,f):
+    r0=(pob[indexarr[0]])
+    r1=(pob[indexarr[1]])
+    r2=(pob[indexarr[2]])
+    return r0 + f * (r1 - r2)
 def funcion_U(V, gen_actual, CR):
     U = gen_actual.copy()
     for i in range(len(V)):
@@ -40,24 +59,23 @@ def getindex(index_actual, size):
             arreglo_index.append(valor)
     return arreglo_index
 
-def evaluar_cerebro(W, n_input, n_output):
-    cerebro = mnit_neural_network(n_input, n_output, W)
+def convertir_a_gris(obs):
+    img = Image.fromarray(obs, 'RGB').convert('L')
+    img_redimensionada = img.resize((50, 50))
+    return np.array(img_redimensionada)
+
+def evaluar_cerebro(W, n_input, n_output):#Esta es la funcion donde jugara Mario
+    cerebro = MariobrosNN(n_input, n_output,W)
     recompensa = 0
     env.reset()
     action = env.action_space.sample()
     obs, reward, terminated, truncated, info = env.step(action)
-
     for step in range(5000):
         obs_gris = convertir_a_gris(obs)
-        obstensor = torch.from_numpy(obs_gris)  # Convertir a tensor
-        obstensor = obstensor.float()
-        accion = cerebro.forward(obstensor).argmax().item()
-        if accion>7:
-            obs, reward, terminated, truncated, info = env.step(6)
-        else:
-            obs, reward, terminated, truncated, info = env.step(accion)
-        #accion = min(max(0, accion), 11)
+        obs_gristensor = torch.tensor(np.array(obs_gris).flatten().tolist())
+        accion = cerebro.forward(obs_gristensor).argmax().item()
         #print(accion)
+        obs, reward, terminated, truncated, info = env.step(accion)
         recompensa += reward
         done = terminated or truncated
 
@@ -65,54 +83,60 @@ def evaluar_cerebro(W, n_input, n_output):
             env.reset()
 
     return recompensa
+def mejor(mayor,arreglo,mejorcerebro,pesosmejores,pesos):
+    bestindex=mejorcerebro
+    pesosideales=pesosmejores
+    for i in range(len(arreglo)):
+        if arreglo[i]>mayor:
+            bestindex=i
+            mayor=arreglo[i]
+            pesosideales=pesos[bestindex]
 
+    return bestindex,mayor,pesosideales
+#Creacion de la red neuronal
 env = gym.make('SuperMarioBros-v0', apply_api_compatibility=True, render_mode="human")
-env = JoypadSpace(env,SIMPLE_MOVEMENT)
-n_input = 50
-n_output = len(SIMPLE_MOVEMENT)
+env = JoypadSpace(env, COMPLEX_MOVEMENT)
+n_input = 50 * 50
+n_output = 12
 CR = 0.8
 F = 0.9
 NP = 10
 Num_of_gen = 10
 print(COMPLEX_MOVEMENT)
-# Función para convertir la observación a escala de grises
-def convertir_a_gris(obs):
-    img = Image.fromarray(obs, 'RGB').convert('L')
-    img_redimensionada = img.resize((50, 50))
-    return np.array(img_redimensionada)
+tamaño_arreglo = 125151200 #El numero de pesos que tendra la red neuronal
 
-def funcion_V_Mario(indexarr, df: pd.DataFrame, f):
-    r0 = np.array(df.iloc[[indexarr[0]]])
-    r1 = np.array(df.iloc[[indexarr[1]]])
-    r2 = np.array(df.iloc[[indexarr[2]]])
-    return r0 + f * (r1 - r2)
-
-env.reset()
-action = env.action_space.sample()
-obs, reward, terminated, truncated, info = env.step(action)
-env.reset()
-
-tamaño_arreglo = ((n_input*200) + (400*n_output))
-columna = np.arange(tamaño_arreglo)
-columna_texto = str(columna)
-
-Poblacion = pd.DataFrame(np.random.uniform(-2, 2, size=(Num_of_gen, len(columna))), columns=columna)
+# Aqui creamos la poblacion
+Poblacion = []
+for i in range(0, 10):
+    arreglo = np.random.uniform(-2, 2, tamaño_arreglo)
+    Poblacion.append(arreglo)
+#Inica entrenamiento de la red neuoronal
+mayorrecompensa=-1000
 Best_gen = Poblacion.copy()
-gen = 0
+mejorcerebro=0
+pesosideales=Best_gen[0]
+gen=0
+while gen<10:
+    Best_gen=Best_gen.copy()
+    recompensa=[]
+    for i in range(0,Num_of_gen):
+        index=getindex(i,Num_of_gen)
+        v = (FVMARIO(index, Best_gen, F))
+        u = (funcion_U(v, Best_gen[i], CR))
+        r=evaluar_cerebro(u, n_input, n_output)
+        recompensa.append(r)
+        Best_gen[i]=u
+    print("Fin de generacion {}".format(gen))
+    print("Todas las recompensas = {}".format(recompensa))
+    mejorcerebro,mayorrecompensa,pesosideales=mejor(mayorrecompensa,recompensa,mejorcerebro,pesosideales,Best_gen)
+    print("Mayor recompensa = {}".format(mayorrecompensa))
+    print(pesosideales)
+    gen+=1
 
-while gen < 10:
-    recompensa = []
-    for i in range(0, Num_of_gen):
-        index = getindex(i, Num_of_gen)
-        genactual = Best_gen.iloc[[i]]
-        V = funcion_V_Mario(index, Best_gen, F)
-        U = funcion_U(V[0], genactual, CR)
+#Proceso de serializacion de los datos
+with open('pesosideales_capas_enormes.txt', 'w') as file:
+    for peso in pesosideales:
+        file.write(str(peso) + '\n')
 
-        # Convertir U a un tensor de PyTorch
-        U_tensor = torch.tensor(U.values, dtype=torch.float32)
-
-        reward_mario = evaluar_cerebro(U_tensor.numpy(), n_input, n_output)  # Convertir el tensor de vuelta a un array de NumPy para que sirva XD
-        recompensa.append(reward_mario)
-        Best_gen.iloc[[i]]
-    gen += 1
-    Best_gen['reward'] = recompensa
+with open('mayorrecompensa_capasenormes.txt', 'w') as file:
+    file.write(str(mayorrecompensa) + '\n')
