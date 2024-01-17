@@ -78,6 +78,7 @@ def evaluar_cerebro(W, n_input, n_output):
         done = terminated or truncated
 
         if done:
+            recompensa=0
             env.reset()
 
     return recompensa
@@ -92,8 +93,9 @@ Num_of_gen = 10
 print(COMPLEX_MOVEMENT)
 tamaño_arreglo = 258960#El numero de pesos que tendra la red neuronal
 
-with open('pesosideales.txt', 'r') as file:
+with open('pesosideales_Mario_Pasa_los_tubos.txt', 'r') as file:
     pesos_leidos = [float(line.strip()) for line in file]
 
 pesos_leidos=(np.array(pesos_leidos))
+loaded_Best_gen = np.loadtxt('Best_gen.txt')
 print(evaluar_cerebro(pesos_leidos,n_input,n_output))

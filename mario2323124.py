@@ -69,19 +69,20 @@ def evaluar_cerebro(W, n_input, n_output):#Esta es la funcion donde jugara Mario
     recompensa = 0
     env.reset()
     action = env.action_space.sample()
-    obs, reward, terminated, truncated, info = env.step(action)
-    for step in range(5000):
+    obs, reward, terminated, truncated, info= env.step(action)
+    for step in range(2500):
         obs_gris = convertir_a_gris(obs)
         obs_gristensor = torch.tensor(np.array(obs_gris).flatten().tolist())
         accion = cerebro.forward(obs_gristensor).argmax().item()
-        #print(accion)
+        mov=COMPLEX_MOVEMENT[accion]
+        print(mov)
         obs, reward, terminated, truncated, info = env.step(accion)
+        #print(reward)
         recompensa += reward
         done = terminated or truncated
-
         if done:
+            recompensa = 0
             env.reset()
-
     return recompensa
 def mejor(mayor,arreglo,mejorcerebro,pesosmejores,pesos):
     bestindex=mejorcerebro
@@ -124,11 +125,13 @@ Best_gen = Poblacion.copy()
 mejorcerebro=0
 pesosideales=Best_gen[0]
 mejoresrecompensas=[0,0,0,0,0,0,0,0,0,0]
+deathcount=[10,10,10,10,10,10,10,10,10,10]
 gen=0
-while gen<=10:
+while gen<=100:
     Best_gen=Best_gen.copy()
     recompensa=[]
     pesos_actuales=[]
+    muertes=[]
     for i in range(0,Num_of_gen):
         index=getindex(i,Num_of_gen)
         v = (FVMARIO(index, Best_gen, F))
@@ -136,6 +139,7 @@ while gen<=10:
         r=evaluar_cerebro(u, n_input, n_output)
         recompensa.append(r)
         pesos_actuales.append(u)
+        print("Cerebro {} terminado".format(i))
     print("Fin de generacion {}".format(gen))
     print("Todas las recompensas = {}".format(recompensa))
     Best_gen,mejoresrecompensas=mejorescerebros(mejoresrecompensas,recompensa,Best_gen,pesos_actuales)
@@ -146,6 +150,8 @@ while gen<=10:
     gen+=1
 
 #Proceso de serializacion de los datos
+
+np.savetxt('Best_gen.txt', Best_gen)
 with open('pesosideales.txt', 'w') as file:
     for peso in pesosideales:
         file.write(str(peso) + '\n')
