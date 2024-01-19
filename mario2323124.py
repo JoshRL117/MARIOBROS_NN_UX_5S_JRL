@@ -75,7 +75,6 @@ def evaluar_cerebro(W, n_input, n_output):#Esta es la funcion donde jugara Mario
         obs_gristensor = torch.tensor(np.array(obs_gris).flatten().tolist())
         accion = cerebro.forward(obs_gristensor).argmax().item()
         mov=COMPLEX_MOVEMENT[accion]
-        print(mov)
         obs, reward, terminated, truncated, info = env.step(accion)
         #print(reward)
         recompensa += reward
@@ -127,7 +126,7 @@ pesosideales=Best_gen[0]
 mejoresrecompensas=[0,0,0,0,0,0,0,0,0,0]
 deathcount=[10,10,10,10,10,10,10,10,10,10]
 gen=0
-while gen<=100:
+while gen<=50:
     Best_gen=Best_gen.copy()
     recompensa=[]
     pesos_actuales=[]
